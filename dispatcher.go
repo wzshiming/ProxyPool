@@ -25,7 +25,7 @@ type Dispatcher struct {
 	ch         chan *url.URL
 	//pools      *pools
 	checkFork *fork.Fork
-	storage   Storage
+	Storage
 }
 
 func NewDispatcher() *Dispatcher {
@@ -42,14 +42,14 @@ func NewDispatcher() *Dispatcher {
 }
 
 func (d *Dispatcher) ProxyFunc(r *http.Request) (*url.URL, error) {
-	u, err := d.storage.GetRandom(r.URL.Scheme)
+	u, err := d.Storage.GetRandom(r.URL.Scheme)
 	if err != nil {
 		return nil, err
 	}
 	if u == "" {
 		return nil, nil
 	}
-	d.storage.IncUsed(r.URL.Scheme, u)
+	d.Storage.IncUsed(r.URL.Scheme, u)
 	return url.Parse(u)
 }
 
@@ -65,8 +65,7 @@ func (d *Dispatcher) MustProxyFunc(r *http.Request) (*url.URL, error) {
 }
 
 func (d *Dispatcher) SetStorage(s Storage) {
-	d.storage = s
-
+	d.Storage = s
 }
 
 func (d *Dispatcher) AddCollector(c Collector) {
@@ -104,17 +103,17 @@ func (d *Dispatcher) check(check Checker, v *url.URL) {
 	d.checkFork.Push(func() {
 		_, err := check.Check(d.cliCheck, v)
 		if err != nil {
-			d.storage.IncFailure(v.Scheme, v.String())
+			d.Storage.IncFailure(v.Scheme, v.String())
 			return
 		}
-		d.storage.IncCheck(v.Scheme, v.String())
+		d.Storage.IncCheck(v.Scheme, v.String())
 	})
 }
 
 func (d *Dispatcher) runRecheckers(pre string) {
 	interval := time.Second * 30
 	d.task.AddPeriodic(task.PeriodicIntervalCount(time.Now().Add(1-interval), interval, -1), func() {
-		tmp, _ := d.storage.GetAll(pre)
+		tmp, _ := d.Storage.GetAll(pre)
 		for _, v := range tmp {
 			u, _ := url.Parse(v)
 			if u != nil {
@@ -133,7 +132,7 @@ func (d *Dispatcher) runCollectors(coll Collector) {
 			return
 		}
 		for _, v := range proxys {
-			if ok, _ := d.storage.IsExist(v.Scheme, v.String()); ok {
+			if ok, _ := d.Storage.IsExist(v.Scheme, v.String()); ok {
 				continue
 			}
 			d.ch <- v

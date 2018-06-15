@@ -97,15 +97,12 @@ func (r *Redis) GetRandom(prefix string) (string, error) {
 func (r *Redis) GetAll(prefix string) ([]string, error) {
 	r.mut.Lock()
 	defer r.mut.Unlock()
-	ss := []string{}
-	for i, _ := range r.index {
-		k := strings.Join([]string{r.prefix, i, "ready"}, ":")
-		m, err := r.cli.HKeys(k).Result()
-		if err != nil {
-			return nil, err
-		}
-		ss = append(ss, m...)
 
+	k := strings.Join([]string{r.prefix, prefix, "ready"}, ":")
+	m, err := r.cli.HKeys(k).Result()
+	if err != nil {
+		return nil, err
 	}
-	return ss, nil
+
+	return m, nil
 }
